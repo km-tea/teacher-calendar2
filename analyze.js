@@ -1,6 +1,7 @@
 // 업로드한 PDF/HWPX를 AI로 읽어 일정 후보를 돌려줌 (저장은 사용자가 확인한 뒤)
 import JSZip from 'jszip';
 import { json, authed } from '../lib/common.js';
+import { hwpxText } from '../lib/hwpx.js';
 const MODELS = [process.env.GEMINI_MODEL, 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest'].filter(Boolean);
 
 export default async (req) => {
@@ -15,11 +16,9 @@ export default async (req) => {
   } else if (ext === 'pdf') {
     parts = [{ inline_data: { mime_type: 'application/pdf', data } }, { text: prompt }];
   } else if (ext === 'hwpx') {
-    const zip = await JSZip.loadAsync(Buffer.from(data, 'base64'));
-    let text = '';
-    for (const n of Object.keys(zip.files).filter((n) => /Contents\/section\d+\.xml$/.test(n)).sort())
-      text += (await zip.file(n).async('string')).replace(/<\/hp:p>/g, '\n').replace(/<[^>]+>/g, '') + '\n';
-    parts = [{ text: prompt + '\n\n[문서]\n' + text.slice(0, 60000) }];
+    const text = await hwpxText(await JSZip.loadAsync(Buffer.from(data, 'base64')));
+    if (text.trim().length < 10) return json({ error: '한글 파일에서 글자를 읽지 못했습니다. PDF로 저장해서 올려 주세요' }, 400);
+    parts = [{ text: prompt + '\n\n[문서]\n' + text.slice(0, 100000) }];
   } else {
     return json({ error: '.hwp 파일은 한글에서 "다른 이름으로 저장 → PDF 또는 .hwpx"로 저장해 올려 주세요' }, 400);
   }
