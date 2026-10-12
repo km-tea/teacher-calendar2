@@ -97,7 +97,7 @@ const kst=iso=>{const s=new Date(iso).toLocaleString('sv-SE',{timeZone:'Asia/Seo
 const iso=(d,t)=>new Date(`${d}T${t}:00+09:00`).toISOString();
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const remLabel=m=>({0:'정각',10:'10분 전',60:'1시간 전',1440:'하루 전',4320:'3일 전'}[m]||m+'분 전');
-let tt;function toast(t){const e=$('#toast');e.textContent=t;e.hidden=false;clearTimeout(tt);tt=setTimeout(()=>e.hidden=true,3500)}
+let tt;function toast(t){const e=$('#toast');e.textContent=t;e.hidden=false;clearTimeout(tt);tt=setTimeout(()=>e.hidden=true,Math.max(3500,t.length*130))}
 
 async function api(path,opt={}){
   const r=await fetch(path,{...opt,headers:{'content-type':'application/json',...(token?{authorization:'Bearer '+token}:{})}});

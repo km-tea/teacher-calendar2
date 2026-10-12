@@ -1,7 +1,7 @@
 // 업로드한 PDF/HWPX를 AI로 읽어 일정 후보를 돌려줌 (저장은 사용자가 확인한 뒤)
 import JSZip from 'jszip';
 import { json, authed } from '../lib/common.js';
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const MODELS = [process.env.GEMINI_MODEL, 'gemini-2.5-flash', 'gemini-flash-latest'].filter(Boolean);
 
 export default async (req) => {
   if (!authed(req)) return json({ error: '로그인이 필요합니다' }, 401);
@@ -23,11 +23,17 @@ export default async (req) => {
   } else {
     return json({ error: '.hwp 파일은 한글에서 "다른 이름으로 저장 → PDF 또는 .hwpx"로 저장해 올려 주세요' }, 400);
   }
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: 'application/json' } }),
-  });
-  if (!r.ok) return json({ error: 'AI 분석에 실패했습니다. 잠시 후 다시 시도해 주세요' }, 502);
+  if (!process.env.GEMINI_API_KEY) return json({ error: '서버에 GEMINI_API_KEY가 설정되지 않았습니다' }, 500);
+  let r, why = '';
+  for (const m of MODELS) {
+    r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: 'application/json' } }),
+    });
+    if (r.ok) break;
+    why = `[${m}] ${r.status} ${(await r.text()).replace(/\s+/g, ' ').slice(0, 200)}`;
+  }
+  if (!r.ok) return json({ error: 'AI 분석 실패: ' + why }, 502);
   let list = [];
   try { list = JSON.parse((await r.json()).candidates[0].content.parts[0].text); } catch {}
   const events = (Array.isArray(list) ? list : [])
