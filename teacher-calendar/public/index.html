@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>교사 일정 캘린더</title>
+<link rel="manifest" href="/manifest.json"><meta name="theme-color" content="#23473d"><link rel="apple-touch-icon" href="/icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><link rel="icon" href="/icon.svg">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f1f4f3;--ink:#1c2926;--mute:#62726c;--board:#23473d;--chalk:#f4d56b;--line:#d8e0dd;--card:#fff;--ok:#2f7d68;--bad:#b3402f}
+@media(prefers-color-scheme:dark){:root{--bg:#121917;--ink:#e5eeea;--mute:#8da099;--board:#1a352d;--line:#2a3935;--card:#1b2522;--ok:#5db8a0}}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;font:15px/1.5 "IBM Plex Sans KR",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select{font:inherit;color:inherit}
+button,.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,.cell:focus-visible{outline:2px solid var(--chalk);outline-offset:2px}
+.primary{background:var(--board);color:#fff;border-color:var(--board)}.link{border:0;background:none;color:var(--ok);padding:4px 0}
+header{background:var(--board);color:#fff;padding:14px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+header h2{margin:0;font-size:26px;font-weight:700;min-width:150px}
+header button,header .btn{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
+.nav{display:flex;gap:6px}.tools{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+main{display:grid;grid-template-columns:1fr 320px;gap:16px;padding:16px 20px;max-width:1280px;margin:auto}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);background:var(--line);gap:1px;border:1px solid var(--line);border-radius:10px;overflow:hidden;align-self:start}
+.dow{background:var(--card);text-align:center;padding:6px;color:var(--mute);font-size:13px}
+.cell{background:var(--card);border:0;border-radius:0;min-height:96px;padding:6px;text-align:left;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.cell.out{opacity:.45}.cell.sel{box-shadow:inset 0 0 0 2px var(--board)}
+.n{width:26px;height:26px;display:grid;place-items:center;border-radius:50%;font-weight:500}
+.today .n{background:var(--chalk);color:#222;font-weight:700}
+.ev{font-size:12px;background:color-mix(in srgb,var(--ok) 16%,transparent);border-radius:4px;padding:0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.more{font-size:12px;color:var(--mute)}
+aside{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;align-self:start}
+aside h3{margin:0 0 8px;font-size:20px}ul{list-style:none;margin:0 0 12px;padding:0}
+li{display:grid;grid-template-columns:48px 1fr auto;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+li small{display:block;color:var(--mute)}li.empty{display:block;color:var(--mute)}
+dialog{border:0;border-radius:12px;padding:20px;width:min(94vw,520px);background:var(--card);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+label{display:block;margin-bottom:10px;font-size:13px;color:var(--mute)}
+label input,label select{display:block;width:100%;margin-top:3px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.row{display:flex;gap:10px}.row>*{flex:1}.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.sg{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.sg input[type=text]{grid-column:2/4}.sg input{padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+#auth{min-height:100vh;display:grid;place-items:center;padding:16px}
+#authForm{width:min(94vw,380px);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:28px}
+#authForm h1{margin:0 0 4px;font-size:24px}.err{color:var(--bad);min-height:1.4em;margin:8px 0 0}
+#authForm .primary{width:100%;margin-top:6px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--board);color:#fff;padding:10px 16px;border-radius:8px;max-width:90vw}
+@media(max-width:860px){main{grid-template-columns:1fr;padding:10px}.cell{min-height:58px;align-items:center}.ev,.more{display:none}.cell.has::after{content:'';width:6px;height:6px;border-radius:50%;background:var(--ok)}header{padding:10px 12px}header h2{font-size:22px;min-width:0}.tools{margin-left:0;width:100%}.tools>*{flex:1;text-align:center;font-size:13px;padding:7px 6px}}
+@media(prefers-reduced-motion:no-preference){dialog[open]{animation:pop .15s ease-out}@keyframes pop{from{transform:scale(.97);opacity:0}}}
+</style></head><body>
+
+<div id="auth" hidden><form id="authForm">
+  <h1>교사 일정 캘린더</h1><p id="authSub" style="color:var(--mute);margin:0 0 16px">로그인하면 어느 컴퓨터에서나 같은 일정이 보입니다.</p>
+  <label id="nameRow" hidden>이름<input name="name" autocomplete="name"></label>
+  <label>이메일<input name="email" type="email" required autocomplete="email"></label>
+  <label>비밀번호 (6자 이상)<input name="password" type="password" minlength="6" required autocomplete="current-password"></label>
+  <button class="primary" id="authBtn">로그인</button>
+  <button type="button" class="link" id="authSwitch">처음이신가요? 가입하기</button>
+  <p class="err" id="authErr"></p>
+</form></div>
+
+<div id="app" hidden>
+  <header>
+    <h2 id="title"></h2>
+    <div class="nav"><button id="prev" aria-label="이전 달">‹</button><button id="todayBtn">오늘</button><button id="next" aria-label="다음 달">›</button></div>
+    <div class="tools">
+      <button id="pushBtn">🔔 알림 켜기</button>
+      <label class="btn" style="margin:0;color:#fff">📄 문서에서 일정 찾기<input id="file" type="file" accept=".pdf,.hwpx,.hwp" hidden></label>
+      <button id="logout">로그아웃</button>
+    </div>
+  </header>
+  <main>
+    <section id="grid" class="grid" aria-label="월간 달력"></section>
+    <aside><h3 id="dayTitle"></h3><ul id="dayList"></ul><button class="primary" id="add">이 날 일정 추가</button></aside>
+  </main>
+</div>
+
+<dialog id="evDlg"><form id="evForm">
+  <h3 id="evHead" style="margin-top:0">일정 추가</h3>
+  <div class="row"><label>날짜<input type="date" name="date" required></label><label>시간<input type="time" name="time" value="09:00" required></label></div>
+  <label>내용<input name="title" required maxlength="120"></label>
+  <label>장소<input name="place" maxlength="120"></label>
+  <label>알림<select name="remind"><option value="">알림 없음</option><option value="0">정각에</option><option value="10" selected>10분 전</option><option value="60">1시간 전</option><option value="1440">하루 전</option><option value="4320">3일 전</option></select></label>
+  <div class="actions"><button type="button" id="evDel" class="link" style="color:var(--bad);margin-right:auto">삭제</button><button type="button" id="evCancel">취소</button><button class="primary">저장</button></div>
+</form></dialog>
+
+<dialog id="sgDlg">
+  <h3 style="margin-top:0" id="sgHead">문서에서 찾은 일정</h3>
+  <div id="sgList"></div>
+  <label style="margin-top:10px">알림<select id="sgRemind"><option value="">알림 없음</option><option value="60">1시간 전</option><option value="1440" selected>하루 전</option><option value="4320">3일 전</option></select></label>
+  <div class="actions"><button id="sgCancel">닫기</button><button class="primary" id="sgSave">선택한 일정 추가</button></div>
+</dialog>
+<div id="toast" hidden></div>
+
+<script>
+const $=s=>document.querySelector(s);
+let token=localStorage.getItem('tc_token'),events=[],cur=new Date(),sel=new Date().toLocaleDateString('sv-SE'),editId=null,signup=false;
+const ymd=d=>d.toLocaleDateString('sv-SE');
+const kst=iso=>{const s=new Date(iso).toLocaleString('sv-SE',{timeZone:'Asia/Seoul'});return{date:s.slice(0,10),time:s.slice(11,16)}};
+const iso=(d,t)=>new Date(`${d}T${t}:00+09:00`).toISOString();
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const remLabel=m=>({0:'정각',10:'10분 전',60:'1시간 전',1440:'하루 전',4320:'3일 전'}[m]||m+'분 전');
+let tt;function toast(t){const e=$('#toast');e.textContent=t;e.hidden=false;clearTimeout(tt);tt=setTimeout(()=>e.hidden=true,3500)}
+
+async function api(path,opt={}){
+  const r=await fetch(path,{...opt,headers:{'content-type':'application/json',...(token?{authorization:'Bearer '+token}:{})}});
+  const d=await r.json().catch(()=>({}));
+  if(r.status===401&&token&&!path.includes('/auth')){logout();throw new Error('다시 로그인해 주세요')}
+  if(!r.ok)throw new Error(d.error||'오류가 발생했습니다');return d}
+
+/* 로그인 */
+function show(){$('#auth').hidden=!!token;$('#app').hidden=!token}
+$('#authSwitch').onclick=()=>{signup=!signup;$('#nameRow').hidden=!signup;$('#authBtn').textContent=signup?'가입하고 시작':'로그인';$('#authSwitch').textContent=signup?'이미 계정이 있어요':'처음이신가요? 가입하기'};
+$('#authForm').onsubmit=async e=>{e.preventDefault();const f=e.target;$('#authErr').textContent='';
+  try{const r=await api('/api/auth',{method:'POST',body:JSON.stringify({mode:signup?'signup':'login',email:f.email.value,password:f.password.value,name:f.name.value})});
+    token=r.token;localStorage.setItem('tc_token',token);f.reset();show();start()}catch(err){$('#authErr').textContent=err.message}};
+function logout(){token=null;localStorage.removeItem('tc_token');events=[];show()}
+$('#logout').onclick=logout;
+
+/* 달력 */
+async function load(){events=await api('/api/events');render()}
+function render(){renderCal();renderDay()}
+function renderCal(){
+  const y=cur.getFullYear(),m=cur.getMonth();$('#title').textContent=`${y}년 ${m+1}월`;
+  const start=new Date(y,m,1-new Date(y,m,1).getDay()),by={},now=ymd(new Date());
+  events.forEach(e=>{const k=kst(e.start_at).date;(by[k]=by[k]||[]).push(e)});
+  let h=['일','월','화','수','목','금','토'].map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const k=ymd(d),l=by[k]||[];
+    h+=`<button class="cell${d.getMonth()!==m?' out':''}${l.length?' has':''}${k===now?' today':''}${k===sel?' sel':''}" data-d="${k}"><span class="n">${d.getDate()}</span>${l.slice(0,2).map(e=>`<span class="ev">${kst(e.start_at).time} ${esc(e.title)}</span>`).join('')}${l.length>2?`<span class="more">+${l.length-2}개 더</span>`:''}</button>`}
+  $('#grid').innerHTML=h}
+function renderDay(){
+  const[,m,d]=sel.split('-'),l=events.filter(e=>kst(e.start_at).date===sel);$('#dayTitle').textContent=`${+m}월 ${+d}일`;
+  $('#dayList').innerHTML=l.length?l.map(e=>`<li><b>${kst(e.start_at).time}</b><div>${esc(e.title)}${e.place?`<small>${esc(e.place)}</small>`:''}<small>${e.remind_minutes==null?'알림 없음':'🔔 '+remLabel(e.remind_minutes)}</small></div><button data-edit="${e.id}">수정</button></li>`).join(''):'<li class="empty">이 날은 일정이 없습니다. 아래 버튼으로 추가해 보세요.</li>'}
+$('#grid').onclick=e=>{const c=e.target.closest('.cell');if(c){sel=c.dataset.d;render()}};
+$('#grid').ondblclick=e=>{if(e.target.closest('.cell'))openEv()};
+$('#dayList').onclick=e=>{const b=e.target.closest('[data-edit]');if(b)openEv(events.find(x=>x.id==b.dataset.edit))};
+$('#prev').onclick=()=>{cur=new Date(cur.getFullYear(),cur.getMonth()-1,1);renderCal()};
+$('#next').onclick=()=>{cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);renderCal()};
+$('#todayBtn').onclick=()=>{cur=new Date();sel=ymd(cur);render()};
+
+/* 일정 입력 */
+function openEv(ev){const f=$('#evForm');editId=ev?ev.id:null;const k=ev?kst(ev.start_at):{date:sel,time:'09:00'};
+  $('#evHead').textContent=ev?'일정 수정':'일정 추가';f.date.value=k.date;f.time.value=k.time;f.title.value=ev?ev.title:'';f.place.value=ev?ev.place:'';
+  f.remind.value=ev?(ev.remind_minutes==null?'':ev.remind_minutes):'10';$('#evDel').hidden=!ev;$('#evDlg').showModal()}
+$('#add').onclick=()=>openEv();$('#evCancel').onclick=()=>$('#evDlg').close();
+$('#evForm').onsubmit=async e=>{e.preventDefault();const f=e.target;
+  const b={title:f.title.value.trim(),place:f.place.value.trim(),start_at:iso(f.date.value,f.time.value),remind_minutes:f.remind.value===''?null:+f.remind.value};
+  try{editId?await api('/api/events?id='+editId,{method:'PUT',body:JSON.stringify(b)}):await api('/api/events',{method:'POST',body:JSON.stringify([b])});
+    $('#evDlg').close();sel=f.date.value;cur=new Date(sel);await load();
+    if(b.remind_minutes!=null&&!(await pushOn()))toast('알림을 받으려면 위쪽 "알림 켜기"를 눌러 주세요')}catch(err){toast(err.message)}};
+$('#evDel').onclick=async()=>{if(!confirm('이 일정을 삭제할까요?'))return;await api('/api/events?id='+editId,{method:'DELETE'});$('#evDlg').close();load()};
+
+/* 문서에서 일정 찾기 */
+const CDN='https://cdnjs.cloudflare.com/ajax/libs/';
+const loadJs=src=>new Promise((ok,no)=>{const t=document.createElement('script');t.src=src;t.onload=ok;t.onerror=no;document.head.appendChild(t)});
+async function extractText(f){const ext=f.name.split('.').pop().toLowerCase(),buf=await f.arrayBuffer();
+  if(ext==='pdf'){if(!window.pdfjsLib){await loadJs(CDN+'pdf.js/3.11.174/pdf.min.js');
+      pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(await(await fetch(CDN+'pdf.js/3.11.174/pdf.worker.min.js')).blob())}
+    const pdf=await pdfjsLib.getDocument({data:buf}).promise;let t='';
+    for(let i=1;i<=pdf.numPages&&t.length<100000;i++)t+=(await(await pdf.getPage(i)).getTextContent()).items.map(x=>x.str).join(' ')+'\n';return t}
+  if(ext==='hwpx'){if(!window.JSZip)await loadJs(CDN+'jszip/3.10.1/jszip.min.js');const z=await JSZip.loadAsync(buf);let t='';
+    for(const n of Object.keys(z.files).filter(n=>/Contents\/section\d+\.xml$/.test(n)).sort())t+=(await z.file(n).async('string')).replace(/<\/hp:p>/g,'\n').replace(/<[^>]+>/g,'')+'\n';return t}
+  return null}
+let found=[];
+$('#file').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  toast('문서를 살펴보는 중입니다…');
+  try{const text=await extractText(f).catch(()=>null),payload={name:f.name};
+    if(text&&text.trim().length>=50)payload.text=text;
+    else{if(f.size>4*1024*1024)return toast('글자를 읽을 수 없는 스캔 문서는 4MB까지만 분석할 수 있습니다');
+      payload.data=await new Promise(r=>{const x=new FileReader();x.onload=()=>r(x.result.split(',')[1]);x.readAsDataURL(f)})}
+    found=(await api('/api/analyze',{method:'POST',body:JSON.stringify(payload)})).events;
+    if(!found.length)return toast('문서에서 날짜가 있는 일정을 찾지 못했습니다');
+    $('#sgHead').textContent=`'${f.name}'에서 찾은 일정`;
+    $('#sgList').innerHTML=found.map((x,i)=>`<div class="sg" data-i="${i}"><input type="checkbox" checked aria-label="추가"><input type="date" value="${x.date}"><input type="time" value="${x.time}"><input type="text" value="${esc(x.title)}"></div>`).join('');
+    $('#sgDlg').showModal();toast('')}catch(err){toast(err.message)}};
+$('#sgCancel').onclick=()=>$('#sgDlg').close();
+$('#sgSave').onclick=async()=>{const rm=$('#sgRemind').value===''?null:+$('#sgRemind').value;
+  const items=[...document.querySelectorAll('.sg')].filter(r=>r.children[0].checked).map(r=>({title:r.children[3].value.trim(),place:found[r.dataset.i].place,start_at:iso(r.children[1].value,r.children[2].value),remind_minutes:rm,source:'document'})).filter(x=>x.title);
+  if(!items.length)return toast('추가할 일정을 선택해 주세요');
+  await api('/api/events',{method:'POST',body:JSON.stringify(items)});$('#sgDlg').close();await load();toast(`${items.length}개 일정을 추가했습니다`);
+  if(rm!=null&&!(await pushOn()))toast('알림을 받으려면 위쪽 "알림 켜기"를 눌러 주세요')};
+
+/* 푸시 알림 */
+const b64u=s=>Uint8Array.from(atob((s+'='.repeat((4-s.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+async function pushOn(){if(!('serviceWorker'in navigator)||Notification.permission!=='granted')return false;
+  const s=await(await navigator.serviceWorker.ready).pushManager.getSubscription();return!!s}
+async function syncPush(){const ok=await pushOn();$('#pushBtn').textContent=ok?'🔔 알림 켜짐':'🔔 알림 켜기';
+  if(ok){const s=await(await navigator.serviceWorker.ready).pushManager.getSubscription();api('/api/push',{method:'POST',body:JSON.stringify(s)}).catch(()=>{})}}
+$('#pushBtn').onclick=async()=>{
+  if(!('PushManager'in window)){const ios=/iPhone|iPad/.test(navigator.userAgent);return toast(ios?'아이폰은 Safari 공유 버튼 → "홈 화면에 추가"로 설치한 뒤, 홈 화면 아이콘으로 열어 알림을 켜 주세요':'이 브라우저는 알림을 지원하지 않습니다. 크롬이나 엣지를 사용해 주세요')}
+  if(await Notification.requestPermission()!=='granted')return toast('브라우저 주소창의 자물쇠 → 알림을 "허용"으로 바꿔 주세요');
+  const reg=await navigator.serviceWorker.ready,{key}=await(await fetch('/api/push')).json();
+  const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(key)});
+  await api('/api/push',{method:'POST',body:JSON.stringify(sub)});await syncPush();toast('이 컴퓨터에서 알림이 켜졌습니다. 앱을 닫아도 알림이 옵니다')};
+
+function start(){load().catch(e=>toast(e.message));syncPush()}
+if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js');
+show();if(token)start();
+</script></body></html>

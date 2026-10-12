@@ -1,0 +1,12 @@
+{
+  "name": "teacher-calendar",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "jszip": "^3.10.1",
+    "web-push": "^3.6.7"
+  }
+}
